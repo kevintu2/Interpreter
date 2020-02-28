@@ -8,12 +8,7 @@ type stackVal =
   | E
   | Closure of string * (command list) * env
   | InOutClosure of string * (command list) * env
-  
-(* But we will also use this for binding variables, 
-   as long as we remember variables cannot be bound to errors, or directly to names *)
-  
 
-(* well formed instructions *)
 and command = PushI of stackVal 
              | PushS of stackVal 
              | PushN of stackVal 
@@ -35,7 +30,6 @@ and command = PushI of stackVal
              | Quit
 
 
-(* If we limit our interactions with the environment to these helper functions, we can safely change how we encode the environment without changing much other code *)
 and env = (string * stackVal) list
 let insert (s:string) (sv : stackVal) (env: env) : env = (s,sv)::env
 
@@ -48,17 +42,17 @@ let empEnv = []
 
 
 let rec run (commands : command list) (stack: stackVal list) (env: env) : (stackVal list * env) = 
-  (* if stackVal is a variable what  does it resolve to in the current environment *)
+  
   let res (sv : stackVal) : stackVal = 
     match sv with 
       | N n -> (match fetch n env with  
                   | Some n' -> n' 
                   | None    -> N n)
       | sv -> sv
-  in let bad rest : stackVal list * env = run rest (E :: stack) env (* everything fails in the same way*)
+  in let bad rest : stackVal list * env = run rest (E :: stack) env 
   in match (commands , stack)  with
   | (Quit        :: _   , _         ) -> (stack,env)
-  | ([]                 , _         ) -> (stack,env) (*to fix the no return error make a thing that checks if it is in a function and pattern match it here to go different routes*)
+  | ([]                 , _         ) -> (stack,env) 
   
   | (PushI (I i) :: rest, _         ) -> run rest (I i :: stack) env
   
@@ -133,10 +127,10 @@ let rec run (commands : command list) (stack: stackVal list) (env: env) : (stack
   
   | (Bind        :: rest, N n::x::s') -> (match res x with
                                           | E   -> bad rest
-                                          | N _ -> bad rest (* if the variable is unound we get an error *)
+                                          | N _ -> bad rest 
                                           | sv  -> run rest (U :: s') (insert n sv env)) 
   
-  | (Block ls    :: rest, s'        ) -> let (top :: _, _) = run ls [] env (* an exception will be thown if the resulting stack is empty *)
+  | (Block ls    :: rest, s'        ) -> let (top :: _, _) = run ls [] env 
                                          in  run rest (top :: s') env
 
   | (Call        :: rest, parameter :: name :: s') -> (match ((res parameter),(res name)) with
@@ -167,7 +161,7 @@ let rec run (commands : command list) (stack: stackVal list) (env: env) : (stack
   
   
   
-(* remember to test! *)
+
 let e2 = run [PushI (I 1); PushI (I 1); Add] [] empEnv
 let e3 = run [PushN (N "x"); PushI (I 1); Add] [] (insert "x" (I 7) empEnv)
 let e4 = run [PushN (N "x"); PushI (I 1); Add] [] empEnv
@@ -180,7 +174,7 @@ let e10 = run [PushB (B true); PushS (S "o"); PushS (S "j"); If] [] empEnv
 (* ... *)
 
 
-(* writing *)
+
 let to_string (s : stackVal) : string = 
   match s with
   | I i -> string_of_int i 
@@ -192,7 +186,7 @@ let to_string (s : stackVal) : string =
   
 
 
-(* parser combinators over exploded strings *)
+
 let explode (s:string) : char list =
   let rec expl i l =
     if i < 0 
@@ -233,13 +227,13 @@ let parse_int (s : string) : int option =
 
 let parse_string (s : string) : string option = 
     if String.length s > 1 && String.get s 0 = '"' && String.get s (String.length s - 1) = '"'
-    then  Some (String.sub s 1 (String.length s - 2)) (* this is less restrictive then the spec *)
+    then  Some (String.sub s 1 (String.length s - 2)) 
     else None
 
 
 let parse_name (s : string) : string option = 
     if String.length s > 0 && ( let c = (String.get s 0) in is_alpha c ||  c = '_')
-    then  Some s (* this is less restrictive then the spec *)
+    then  Some s 
     else None
     
     
@@ -286,14 +280,9 @@ let parse_single_command (s:string) : command =
     | ("Call"    , _) -> Call
     | ("Return"  , _) -> Return
     | ("Quit"    , _) -> Quit
-    (* any unknown commands will result in an exception *)
+    
 
- 
-(* parsing becomes harder, though it is doable with a "claver" helper function 
-this function had the name parse_block in lab 1 and 2.
-*)
- 
-(* group together everything till you see an "End" return the rest for future work *)
+
 let rec parse_until_end (ls :string list) :  (command list) * (string list)  =  
     match ls with 
     | []              -> ([], [])
@@ -362,7 +351,7 @@ let pe24 = parse_commands [ "Pop" ; "End"; "Pop" ; "Pop" ] (*  ([Pop], ["Pop" ; 
 let rec read_lines (ch : in_channel) : string list =
   match input_line ch with 
     | str                    -> str :: read_lines ch
-    | exception  End_of_file -> [] (* input_line throws an exception at the end of the file *)
+    | exception  End_of_file -> [] 
     
     
 (* from lab 3 *)
@@ -372,7 +361,7 @@ let rec write_lines (ch) (ls : string list ) : unit =
     | x :: xs -> let _ = Printf.fprintf ch "%s\n" x in write_lines ch xs
 
   
-(* TODO file IO stuff *)
+
 
 let interpreter (inputFile : string) (outputFile : string) : unit =
   let ic = open_in inputFile in
